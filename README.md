@@ -3,8 +3,10 @@ A paperless scanner image for EPSON like ET-4950 for trigger via manual Homeassi
 
 Some Epson Scanner (like my ET-4950) have no Scan-to-SMB. This is a way to "implement" it.
 
-I don't want neither use my smartphone nor the Epson-Server for an E-mail workaround.
+I do not want to use either a smartphone-based workflow or Epson's cloud/email workaround.
 
-i am using Homeassistant. The idea is to use an Aqara H1 double remote switch. Left click will call /scan/adf. Right click will call /scan/flatbed.
+I use Home Assistant with an Aqara H1 double remote switch:
+Left button: trigger /scan/adf
+Right button: trigger /scan/flatbed
 
-This image will provide those endpoints and put the scanned files in the provided dir.
+This image exposes these endpoints and writes the scanned files to the configured target directory.
