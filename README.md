@@ -6,7 +6,7 @@ Some Epson Scanner (like my ET-4950) have no Scan-to-SMB. This is a way to "impl
 I do not want to use either a smartphone-based workflow or Epson's cloud/email workaround.
 
 I use Home Assistant with an Aqara H1 double remote switch:
-Left button: trigger /scan/adf
-Right button: trigger /scan/flatbed
+- Left button: trigger /scan/adf
+- Right button: trigger /scan/flatbed
 
 This image exposes these endpoints and writes the scanned files to the configured target directory.
