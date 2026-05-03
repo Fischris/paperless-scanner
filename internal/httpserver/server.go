@@ -22,6 +22,7 @@ func NewHandler(scannerService *scanner.Service, authToken string) http.Handler 
 	authenticatedServeMux := http.NewServeMux()
 	authenticatedServeMux.HandleFunc("/scan/flatbed", scannerHTTPServer.handleFlatbedScan)
 	authenticatedServeMux.HandleFunc("/scan/adf", scannerHTTPServer.handleADFScan)
+	authenticatedServeMux.HandleFunc("/scan/adf-duplex", scannerHTTPServer.handleADFDuplexScan)
 
 	rootServeMux := http.NewServeMux()
 	rootServeMux.HandleFunc("/healthz", scannerHTTPServer.handleHealthz)
@@ -92,6 +93,33 @@ func (scannerHTTPServer *ScannerHTTPServer) handleADFScan(w http.ResponseWriter,
 
 	w.WriteHeader(http.StatusAccepted)
 	_, _ = w.Write([]byte("adf scan accepted\n"))
+}
+
+func (scannerHTTPServer *ScannerHTTPServer) handleADFDuplexScan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeMethodNotAllowed(w, http.MethodPost)
+		return
+	}
+
+	if !scannerHTTPServer.scannerService.TryAcquireScanSlot() {
+		http.Error(w, "scan already in progress\n", http.StatusConflict)
+		return
+	}
+
+	go func() {
+		defer scannerHTTPServer.scannerService.ReleaseScanSlot()
+
+		adfDuplexScanError := scannerHTTPServer.scannerService.RunADFDuplexScan()
+		if adfDuplexScanError != nil {
+			log.Printf("adf duplex scan failed: %v", adfDuplexScanError)
+			return
+		}
+
+		log.Printf("adf duplex scan completed")
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
+	_, _ = w.Write([]byte("adf duplex scan accepted\n"))
 }
 
 func (scannerHTTPServer *ScannerHTTPServer) authMiddleware(nextHandler http.Handler) http.Handler {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -129,24 +130,41 @@ func (scannerService *Service) RunFlatbedScan() error {
 }
 
 func (scannerService *Service) RunADFScan() error {
+	return scannerService.runADFScanToSinglePDF("ADF")
+}
+
+func (scannerService *Service) RunADFDuplexScan() error {
+	return scannerService.runADFScanToSinglePDF("ADF Duplex")
+}
+
+// runADFScanToSinglePDF scans pages into a temp directory as PNG and merges them into a single PDF.
+func (scannerService *Service) runADFScanToSinglePDF(source string) error {
 	timestamp := time.Now().Format("20060102_150405")
-	outputFilePattern := filepath.Join(
+
+	tmpDir, tmpDirError := os.MkdirTemp("", "paperless-scanner-adf-*")
+	if tmpDirError != nil {
+		return fmt.Errorf("create temp dir: %w", tmpDirError)
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	pagePattern := filepath.Join(tmpDir, "page-%04d.png")
+	outputFilePath := filepath.Join(
 		scannerService.scannerConfiguration.TargetDirectory,
-		fmt.Sprintf("scan_adf_%s_%%d.pdf", timestamp),
+		fmt.Sprintf("scan_adf_%s.pdf", timestamp),
 	)
 
+	//scan pages via scanimage  to PNG files
 	scanArguments := []string{
-		"--source", "ADF",
-		"--format=pdf",
+		"--source", source,
+		"--format=png",
 		"--resolution", scannerService.scannerConfiguration.ScanResolutionDPI,
-		"--batch=" + outputFilePattern,
+		"--batch=" + pagePattern,
 	}
 
 	if scannerService.scannerConfiguration.ScannerDevice != "" {
-		scanArguments = append(
-			[]string{"-d", scannerService.scannerConfiguration.ScannerDevice},
-			scanArguments...,
-		)
+		scanArguments = append([]string{"-d", scannerService.scannerConfiguration.ScannerDevice}, scanArguments...)
 	}
 
 	commandContext, cancelCommandContext := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -155,38 +173,47 @@ func (scannerService *Service) RunADFScan() error {
 	scanCommand := exec.CommandContext(commandContext, "scanimage", scanArguments...)
 	scanCommand.Stderr = os.Stderr
 
-	scanCommandError := scanCommand.Run()
-	if scanCommandError != nil {
-		return fmt.Errorf("scanimage failed: %w", scanCommandError)
+	if err := scanCommand.Run(); err != nil {
+		return fmt.Errorf("scanimage failed: %w", err)
 	}
 
-	outputFileMatches, outputFileMatchError := filepath.Glob(
-		filepath.Join(
-			scannerService.scannerConfiguration.TargetDirectory,
-			fmt.Sprintf("scan_adf_%s_*.pdf", timestamp),
-		),
-	)
-	if outputFileMatchError != nil {
-		return fmt.Errorf("list output files: %w", outputFileMatchError)
+	pageFiles, globErr := filepath.Glob(filepath.Join(tmpDir, "page-*.png"))
+	if globErr != nil {
+		return fmt.Errorf("list scanned pages: %w", globErr)
 	}
-	if len(outputFileMatches) == 0 {
-		return errors.New("no output files created")
+	if len(pageFiles) == 0 {
+		return errors.New("no pages scanned")
 	}
+	sort.Strings(pageFiles)
 
-	hasNonEmptyOutputFile := false
-	for _, outputFilePath := range outputFileMatches {
-		outputFileInfo, outputFileStatError := os.Stat(outputFilePath)
-		if outputFileStatError != nil {
-			return fmt.Errorf("stat output file: %w", outputFileStatError)
+	for _, p := range pageFiles {
+		info, statErr := os.Stat(p)
+		if statErr != nil {
+			return fmt.Errorf("stat scanned page: %w", statErr)
 		}
-		if outputFileInfo.Size() > 0 {
-			hasNonEmptyOutputFile = true
-			break
+		if info.Size() == 0 {
+			return fmt.Errorf("scanned page is empty: %s", p)
 		}
 	}
 
-	if !hasNonEmptyOutputFile {
-		return errors.New("all output files are empty")
+	//Merge into one PDF via img2pdf
+	img2pdfArgs := append([]string{"-o", outputFilePath}, pageFiles...)
+	mergeCmd := exec.Command("img2pdf", img2pdfArgs...)
+	mergeCmd.Stderr = os.Stderr
+
+	if err := mergeCmd.Run(); err != nil {
+		_ = os.Remove(outputFilePath)
+		return fmt.Errorf("img2pdf failed: %w", err)
+	}
+
+	outInfo, outStatErr := os.Stat(outputFilePath)
+	if outStatErr != nil {
+		_ = os.Remove(outputFilePath)
+		return fmt.Errorf("stat output pdf: %w", outStatErr)
+	}
+	if outInfo.Size() == 0 {
+		_ = os.Remove(outputFilePath)
+		return errors.New("output pdf is empty")
 	}
 
 	return nil

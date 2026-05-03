@@ -7,6 +7,7 @@ I do not want to use either a smartphone-based workflow or Epson's cloud/email w
 
 I use Home Assistant with an Aqara H1 double remote switch:
 - Left button: trigger /scan/adf
+- Left double button: trigger /scan/adf-duplex
 - Right button: trigger /scan/flatbed
 
 This image exposes these endpoints and writes the scanned files to the configured target directory.
@@ -15,9 +16,10 @@ This image exposes these endpoints and writes the scanned files to the configure
 
 - `GET /healthz`
 - `POST /scan/adf`
+- `POST /scan/adf-duplex`
 - `POST /scan/flatbed`
 
-`/scan/adf` and `/scan/flatbed` require an `Authorization` header in the following format:
+`/scan/adf`, `/scan/adf-duplex` and `/scan/flatbed` require an `Authorization` header in the following format:
 
 ```text
 Authorization: Bearer <AUTH_TOKEN>
@@ -31,12 +33,13 @@ The following environment variables must be provided when running the container:
   Directory where scanned files will be written.
 
 - `AUTH_TOKEN`
-  Bearer token required for `/scan/adf` and `/scan/flatbed`.
+  Bearer token required for `/scan/adf`, `/scan/adf-duplex` and `/scan/flatbed`.
 
 - `SCANNER_DEVICE`
   The scanner device name used by `scanimage`.
 
 If `SCANNER_DEVICE` is not set, the service will run `scanimage -L`, print the discovered devices to the logs and then exit.
+(If this doesn't work, try scanimage -L on host machine)
 
 ## Optional environment variables
 
@@ -61,6 +64,3 @@ docker run --rm \
 ## Example requests
 
 wip
-
-
-  

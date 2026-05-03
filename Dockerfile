@@ -22,6 +22,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         sane-utils \
         sane-airscan \
+        python3 \
+        python3-img2pdf \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
