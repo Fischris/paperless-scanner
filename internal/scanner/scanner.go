@@ -155,7 +155,7 @@ func (scannerService *Service) runADFScanToSinglePDF(source string) error {
 		fmt.Sprintf("scan_adf_%s.pdf", timestamp),
 	)
 
-	//scan pages via scanimage  to PNG files
+	// scan pages via scanimage to PNG files
 	scanArguments := []string{
 		"--source", source,
 		"--format=png",
@@ -196,14 +196,18 @@ func (scannerService *Service) runADFScanToSinglePDF(source string) error {
 		}
 	}
 
-	//Merge into one PDF via img2pdf
+	// Merge into one PDF via img2pdf Python module.
+	// On Debian-Slim-Image: "adf scan failed: img2pdf failed: exec: "img2pdf": executable file not found in $PATH"
+	// so we call it as: python3 -m img2pdf ...
 	img2pdfArgs := append([]string{"-o", outputFilePath}, pageFiles...)
-	mergeCmd := exec.Command("img2pdf", img2pdfArgs...)
+	pyArgs := append([]string{"-m", "img2pdf"}, img2pdfArgs...)
+
+	mergeCmd := exec.Command("python3", pyArgs...)
 	mergeCmd.Stderr = os.Stderr
 
 	if err := mergeCmd.Run(); err != nil {
 		_ = os.Remove(outputFilePath)
-		return fmt.Errorf("img2pdf failed: %w", err)
+		return fmt.Errorf("python3 -m img2pdf failed: %w", err)
 	}
 
 	outInfo, outStatErr := os.Stat(outputFilePath)
