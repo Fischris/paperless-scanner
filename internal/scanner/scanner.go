@@ -232,6 +232,7 @@ func (scannerService *Service) runADFScanToSinglePDF(source string) error {
 
 func rotateOddPages180(pageFiles []string) error {
 	for _, pageFile := range pageFiles {
+
 		pageFileName := filepath.Base(pageFile) // page-0001.png
 		pageNumberText := strings.TrimSuffix(strings.TrimPrefix(pageFileName, "page-"), ".png")
 		pageNumber, parseError := strconv.Atoi(pageNumberText)
@@ -239,14 +240,17 @@ func rotateOddPages180(pageFiles []string) error {
 			return fmt.Errorf("parse page number from %s: %w", pageFileName, parseError)
 		}
 
-		// Odd pages are front sides
-		if pageNumber%2 == 1 {
-			rotateCmd := exec.Command("mogrify", "-rotate", "180", pageFile)
-			output, rotateError := rotateCmd.CombinedOutput()
-			if rotateError != nil {
-				return fmt.Errorf("rotate %s failed: %w (%s)", pageFile, rotateError, strings.TrimSpace(string(output)))
+		isOddPage := pageNumber%2 == 1
+		shouldRotate := (isOddPage && scannerService.scannerConfiguration.RotateOddPages180)||(!isOddPage && scannerService.scannerConfiguration.RotateEvenPages180)
+
+			if shouldRotate {
+				rotateCmd := exec.Command("mogrify", "-rotate", "180", pageFile)
+				output, rotateError := rotateCmd.CombinedOutput()
+				if rotateError != nil {
+					return fmt.Errorf("rotate %s failed: %w (%s)", pageFile, rotateError, strings.TrimSpace(string(output)))
+				}
 			}
-		}
+
 	}
 
 	return nil
