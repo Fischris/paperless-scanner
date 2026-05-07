@@ -241,14 +241,7 @@ func rotateOddPages180(pageFiles []string) error {
 
 		// Odd pages are front sides
 		if pageNumber%2 == 1 {
-			rotateScript := fmt.Sprintf(`
-from PIL import Image
-img = Image.open(%q)
-img = img.rotate(180, expand=True)
-img.save(%q)
-`, pageFile, pageFile)
-
-			rotateCmd := exec.Command("python3", "-c", rotateScript)
+			rotateCmd := exec.Command("mogrify", "-rotate", "180", pageFile)
 			output, rotateError := rotateCmd.CombinedOutput()
 			if rotateError != nil {
 				return fmt.Errorf("rotate %s failed: %w (%s)", pageFile, rotateError, strings.TrimSpace(string(output)))

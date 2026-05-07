@@ -24,7 +24,7 @@ RUN apt-get update && \
         sane-airscan \
         python3 \
         python3-img2pdf \
-        python3-pil \
+        imagemagick \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
