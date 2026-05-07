@@ -243,14 +243,13 @@ func rotateOddPages180(pageFiles []string) error {
 		isOddPage := pageNumber%2 == 1
 		shouldRotate := (isOddPage && scannerService.scannerConfiguration.RotateOddPages180)||(!isOddPage && scannerService.scannerConfiguration.RotateEvenPages180)
 
-			if shouldRotate {
-				rotateCmd := exec.Command("mogrify", "-rotate", "180", pageFile)
-				output, rotateError := rotateCmd.CombinedOutput()
-				if rotateError != nil {
-					return fmt.Errorf("rotate %s failed: %w (%s)", pageFile, rotateError, strings.TrimSpace(string(output)))
-				}
+		if shouldRotate {
+			rotateCmd := exec.Command("mogrify", "-rotate", "180", pageFile)
+			output, rotateError := rotateCmd.CombinedOutput()
+			if rotateError != nil {
+				return fmt.Errorf("rotate %s failed: %w (%s)", pageFile, rotateError, strings.TrimSpace(string(output)))
 			}
-
+		}
 	}
 
 	return nil
