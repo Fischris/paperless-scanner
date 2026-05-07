@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -186,6 +187,12 @@ func (scannerService *Service) runADFScanToSinglePDF(source string) error {
 	}
 	sort.Strings(pageFiles)
 
+	if source == "ADF Duplex" && scannerService.scannerConfiguration.RotateOddPages180 {
+		if err := rotateOddPages180(pageFiles); err != nil {
+			return fmt.Errorf("rotate odd duplex pages: %w", err)
+		}
+	}
+
 	for _, p := range pageFiles {
 		info, statErr := os.Stat(p)
 		if statErr != nil {
@@ -218,6 +225,35 @@ func (scannerService *Service) runADFScanToSinglePDF(source string) error {
 	if outInfo.Size() == 0 {
 		_ = os.Remove(outputFilePath)
 		return errors.New("output pdf is empty")
+	}
+
+	return nil
+}
+
+func rotateOddPages180(pageFiles []string) error {
+	for _, pageFile := range pageFiles {
+		pageFileName := filepath.Base(pageFile) // page-0001.png
+		pageNumberText := strings.TrimSuffix(strings.TrimPrefix(pageFileName, "page-"), ".png")
+		pageNumber, parseError := strconv.Atoi(pageNumberText)
+		if parseError != nil {
+			return fmt.Errorf("parse page number from %s: %w", pageFileName, parseError)
+		}
+
+		// Odd pages are front sides
+		if pageNumber%2 == 1 {
+			rotateScript := fmt.Sprintf(`
+from PIL import Image
+img = Image.open(%q)
+img = img.rotate(180, expand=True)
+img.save(%q)
+`, pageFile, pageFile)
+
+			rotateCmd := exec.Command("python3", "-c", rotateScript)
+			output, rotateError := rotateCmd.CombinedOutput()
+			if rotateError != nil {
+				return fmt.Errorf("rotate %s failed: %w (%s)", pageFile, rotateError, strings.TrimSpace(string(output)))
+			}
+		}
 	}
 
 	return nil

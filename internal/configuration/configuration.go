@@ -13,15 +13,19 @@ type ScannerConfiguration struct {
 	ScannerDevice     string
 	ScanResolutionDPI string
 	ListenPort        string
+	RotateOddPages180 bool
 }
 
 func LoadScannerConfiguration() (ScannerConfiguration, error) {
+	rotateOddPages180Value := strings.ToLower(strings.TrimSpace(os.Getenv("ROTATE_ODD_PAGES_180")))
+
 	scannerConfiguration := ScannerConfiguration{
 		TargetDirectory:   strings.TrimSpace(os.Getenv("TARGET_DIR")),
 		AuthToken:         strings.TrimSpace(os.Getenv("AUTH_TOKEN")),
 		ScannerDevice:     strings.TrimSpace(os.Getenv("SCANNER_DEVICE")),
 		ScanResolutionDPI: strings.TrimSpace(os.Getenv("SCAN_RESOLUTION")),
 		ListenPort:        strings.TrimSpace(os.Getenv("PORT")),
+		RotateOddPages180: rotateOddPages180Value == "1" || rotateOddPages180Value == "true" || rotateOddPages180Value == "yes",
 	}
 
 	if scannerConfiguration.TargetDirectory == "" {
