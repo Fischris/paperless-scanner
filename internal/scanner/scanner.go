@@ -187,9 +187,9 @@ func (scannerService *Service) runADFScanToSinglePDF(source string) error {
 	}
 	sort.Strings(pageFiles)
 
-	if source == "ADF Duplex" && scannerService.scannerConfiguration.RotateOddPages180 {
-		if err := rotateOddPages180(pageFiles); err != nil {
-			return fmt.Errorf("rotate odd duplex pages: %w", err)
+	if source == "ADF Duplex" {
+		if err := scannerService.rotatePages180(pageFiles); err != nil {
+				return fmt.Errorf("rotate duplex pages: %w", err)
 		}
 	}
 
@@ -230,7 +230,7 @@ func (scannerService *Service) runADFScanToSinglePDF(source string) error {
 	return nil
 }
 
-func rotateOddPages180(pageFiles []string) error {
+func (scannerService *Service) rotatePages180(pageFiles []string) error {
 	for _, pageFile := range pageFiles {
 
 		pageFileName := filepath.Base(pageFile) // page-0001.png
@@ -251,6 +251,5 @@ func rotateOddPages180(pageFiles []string) error {
 			}
 		}
 	}
-
 	return nil
 }
